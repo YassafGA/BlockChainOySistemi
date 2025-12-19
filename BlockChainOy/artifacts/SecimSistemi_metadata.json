@@ -1,0 +1,138 @@
+{
+	"compiler": {
+		"version": "0.8.30+commit.73712a01"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "string",
+						"name": "_isim",
+						"type": "string"
+					}
+				],
+				"name": "adayEkle",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "adaySayisi",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "adaylar",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "string",
+						"name": "isim",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "oySayisi",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "string",
+						"name": "",
+						"type": "string"
+					}
+				],
+				"name": "oyKullandiMi",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "string",
+						"name": "_tcNo",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_adayId",
+						"type": "uint256"
+					}
+				],
+				"name": "oyVer",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"Secim.sol": "SecimSistemi"
+		},
+		"evmVersion": "paris",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"Secim.sol": {
+			"keccak256": "0xdaf8c9366fd0a8b0a1db6f966a4c54e0c337aa7bf28e74eaa424cde9de5eb979",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://d984a8831cc12e0a65eaf399f21e4406fa141fce2f565001ea0b625c05932789",
+				"dweb:/ipfs/QmNjTerEZpS8YezBjLUvH9U9SBgZe2JXxLmEsAptizpEwH"
+			]
+		}
+	},
+	"version": 1
+}

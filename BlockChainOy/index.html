@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seçim Sistemi</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        function App() {
+            const mobilMod = window.location.pathname === "/oy";
+            const [adaylar, setAdaylar] = React.useState([]);
+            const [tc, setTc] = React.useState("");
+            const [mesaj, setMesaj] = React.useState({tur: "", metin: ""});
+            const [qrUrl, setQrUrl] = React.useState(""); 
+            const [sunucuIp, setSunucuIp] = React.useState("...");
+            
+            // YENİ: Oy Fişi State'i
+            const [oyFisi, setOyFisi] = React.useState(null); // { hash: "0x...", aday: "Ahmet" }
+
+            // --- 1. IP VE QR (Masaüstü) ---
+            React.useEffect(() => {
+                if (!mobilMod) {
+                    fetch("/sunucu_bilgisi").then(r => r.json()).then(data => {
+                        if (data.ip) {
+                            setSunucuIp(data.ip);
+                            const link = `http://${data.ip}:${data.port}/oy`;
+                            setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${link}`);
+                        }
+                    });
+                }
+            }, []);
+
+            // --- 2. VERİ ÇEK ---
+            const veriCek = async () => {
+                try {
+                    const res = await fetch("/sonuclar");
+                    if(!res.ok) return;
+                    const data = await res.json();
+                    setAdaylar(data.sort((a, b) => b.oy - a.oy));
+                } catch(e) {}
+            };
+            React.useEffect(() => {
+                veriCek();
+                const interval = setInterval(veriCek, 2000);
+                return () => clearInterval(interval);
+            }, []);
+
+            // --- 3. OY VERME ---
+            const oyVer = async (adayId, adayIsim) => {
+                if(tc.length !== 11) { setMesaj({tur: "hata", metin: "⚠️ 11 hane giriniz."}); return; }
+                setMesaj({tur: "yukleniyor", metin: "⏳ Blockchain'e mühürleniyor..."});
+                
+                try {
+                    const res = await fetch("/oy_ver", {
+                        method: "POST", headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({ tc_no: tc, aday_id: adayId })
+                    });
+                    const sonuc = await res.json();
+                    
+                    if(!res.ok) throw new Error(sonuc.detail || "Hata");
+
+                    // BAŞARILI OLUNCA FİŞ OLUŞTURUYORUZ
+                    setOyFisi({
+                        hash: sonuc.hash,
+                        aday: adayIsim,
+                        zaman: new Date().toLocaleTimeString()
+                    });
+                    
+                    setTc(""); 
+                    veriCek();
+                    setMesaj({tur: "", metin: ""}); // Mesajı temizle, çünkü fiş ekranı gelecek
+                    
+                } catch(e) { 
+                    setMesaj({tur: "hata", metin: `⛔ ${e.message}`}); 
+                }
+            };
+
+            const toplamOy = adaylar.reduce((acc, curr) => acc + curr.oy, 0);
+
+            // --- MASAÜSTÜ EKRANI ---
+            if (!mobilMod) {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-900 to-slate-800">
+                        <h1 className="text-5xl font-extrabold mb-10 text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-white">
+                            GENEL SEÇİM SONUÇLARI
+                        </h1>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 w-full max-w-6xl">
+                            <div className="lg:col-span-2 bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700">
+                                <div className="flex justify-between items-center mb-6 border-b border-slate-600 pb-4">
+                                    <h2 className="text-2xl font-bold text-white">CANLI VERİ AKIŞI</h2>
+                                    <div className="bg-slate-900 px-4 py-2 rounded text-yellow-400 font-mono font-bold text-xl">TOPLAM: {toplamOy}</div>
+                                </div>
+                                <div className="space-y-6">
+                                    {adaylar.map((a, i) => {
+                                        const yuzde = toplamOy > 0 ? ((a.oy / toplamOy) * 100).toFixed(1) : 0;
+                                        const renk = i===0?"bg-yellow-500":i===1?"bg-slate-400":i===2?"bg-amber-700":"bg-blue-600";
+                                        return (
+                                            <div key={a.id}>
+                                                <div className="flex justify-between mb-1 text-lg"><span className="font-bold">{i+1}. {a.isim}</span><span className="text-slate-300">%{yuzde} ({a.oy})</span></div>
+                                                <div className="w-full bg-slate-900 rounded-full h-5 overflow-hidden shadow-inner"><div className={`h-full ${renk} transition-all duration-1000 ease-out`} style={{width: `${yuzde}%`}}></div></div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                            <div className="bg-white text-slate-900 p-8 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center">
+                                <h3 className="text-2xl font-black mb-4 text-red-600">OY KULLAN</h3>
+                                {qrUrl ? <div className="p-4 border-4 border-slate-900 rounded-xl mb-4"><img src={qrUrl} alt="QR" className="w-48 h-48" /></div> : <p className="animate-pulse">QR Oluşturuluyor...</p>}
+                                <p className="font-bold text-lg">Telefonunla Tara</p>
+                                <p className="text-sm text-slate-500 mt-2 font-mono">http://{sunucuIp}:8000/oy</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- MOBİL EKRANI: FİŞ GÖSTERİMİ ---
+            if (oyFisi) {
+                return (
+                    <div className="min-h-screen bg-slate-200 p-6 flex items-center justify-center">
+                        <div className="bg-white w-full max-w-sm p-0 rounded-none shadow-2xl relative overflow-hidden">
+                            {/* Fişin üst kısmı (tırtıklı efekt temsili) */}
+                            <div className="bg-slate-900 text-white p-6 text-center">
+                                <div className="text-4xl mb-2">✅</div>
+                                <h2 className="text-2xl font-bold uppercase tracking-widest">Oy Makbuzu</h2>
+                                <p className="text-xs text-slate-400">Yüksek Seçim Kurulu</p>
+                            </div>
+                            
+                            <div className="p-8 space-y-4">
+                                <div className="flex justify-between border-b pb-2">
+                                    <span className="text-slate-500">Seçilen Aday:</span>
+                                    <span className="font-bold text-xl">{oyFisi.aday}</span>
+                                </div>
+                                <div className="flex justify-between border-b pb-2">
+                                    <span className="text-slate-500">İşlem Saati:</span>
+                                    <span className="font-mono">{oyFisi.zaman}</span>
+                                </div>
+                                
+                                <div className="text-center mt-6">
+                                    <p className="text-xs text-slate-400 mb-2">BLOCKCHAIN KANIT KODU (HASH)</p>
+                                    <img 
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${oyFisi.hash}`} 
+                                        className="mx-auto border p-2 rounded mb-2"
+                                    />
+                                    <p className="text-[10px] font-mono text-slate-500 break-all bg-slate-100 p-2 rounded border">{oyFisi.hash}</p>
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={() => setOyFisi(null)}
+                                className="w-full bg-red-600 text-white py-4 font-bold hover:bg-red-700 transition"
+                            >
+                                YENİ OY KULLAN
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
+
+            // --- MOBİL EKRANI: OY FORMU (Normal Giriş) ---
+            return (
+                <div className="min-h-screen bg-slate-100 text-slate-900 p-6 flex flex-col items-center justify-center">
+                    <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
+                        <div className="text-center mb-6">
+                            <h2 className="text-2xl font-black text-red-600">OY PUSULASI</h2>
+                            <p className="text-slate-500 text-sm">Blockchain ile Güvenli Oy Kullanımı</p>
+                        </div>
+                        <div className="mb-6">
+                            <label className="block text-sm font-bold text-slate-700 mb-2">TC Kimlik Numaranız</label>
+                            <input type="number" value={tc} onChange={e => setTc(e.target.value)} placeholder="11111111111" className="w-full p-4 text-xl font-mono text-center border-2 border-slate-300 rounded-xl focus:border-red-500 outline-none transition-colors bg-slate-50"/>
+                        </div>
+                        {mesaj.metin && <div className={`p-4 mb-6 rounded-xl font-bold text-center animate-bounce ${mesaj.tur==='hata' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>{mesaj.metin}</div>}
+                        <div className="grid grid-cols-1 gap-3">
+                            {adaylar.map(a => (
+                                <button key={a.id} onClick={() => oyVer(a.id, a.isim)} disabled={mesaj.tur==='yukleniyor'} className="relative w-full p-4 bg-white border-2 border-slate-200 hover:border-red-600 hover:bg-red-50 rounded-xl font-bold text-lg transition-all flex items-center justify-between group">
+                                    <span>{a.isim}</span>
+                                    <span className="w-6 h-6 rounded-full border-2 border-slate-300 group-hover:bg-red-600 group-hover:border-red-600"></span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
